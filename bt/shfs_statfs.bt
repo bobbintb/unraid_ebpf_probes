@@ -60,14 +60,20 @@ uretprobe:/usr/libexec/unraid/shfs:0x10864
            $st->f_namelen,
            $st->f_frsize);
 
-    if ($st->f_flags & 0x1)  { printf("RDONLY "); }
-    if ($st->f_flags & 0x2)  { printf("NOSUID "); }
-    if ($st->f_flags & 0x4)  { printf("NODEV "); }
-    if ($st->f_flags & 0x8)  { printf("NOEXEC "); }
-    if ($st->f_flags & 0x10) { printf("SYNCHRONOUS "); }
-    if ($st->f_flags & 0x20) { printf("MANDLOCK "); }
-    if ($st->f_flags & 0x40) { printf("WRITE "); }
-    if ($st->f_flags & 0x80) { printf("APPEND "); }
+    if ($st->f_flags & 0x0001)  { printf("RDONLY "); }
+    if ($st->f_flags & 0x0002)  { printf("NOSUID "); }
+    if ($st->f_flags & 0x0004)  { printf("NODEV "); }
+    if ($st->f_flags & 0x0008)  { printf("NOEXEC "); }
+    if ($st->f_flags & 0x0010)  { printf("SYNCHRONOUS "); }
+    if ($st->f_flags & 0x0020)  { printf("VALID "); }
+    if ($st->f_flags & 0x0040)  { printf("MANDLOCK "); }
+    if ($st->f_flags & 0x0080)  { printf("WRITE "); }
+    if ($st->f_flags & 0x0100)  { printf("APPEND "); }
+    if ($st->f_flags & 0x0200)  { printf("IMMUTABLE "); }
+    if ($st->f_flags & 0x0400)  { printf("NOATIME "); }
+    if ($st->f_flags & 0x0800)  { printf("NODIRATIME "); }
+    if ($st->f_flags & 0x1000)  { printf("RELATIME "); }
+    if ($st->f_flags & 0x1000)  { printf("NOSYMFOLLOW "); }
 
     printf("\n");
 
