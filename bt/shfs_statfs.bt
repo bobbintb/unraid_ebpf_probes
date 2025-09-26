@@ -1,0 +1,76 @@
+#!/usr/bin/env bpftrace
+/**
+ * shfs_statfs - trace filesystem statistics for an Unraid share
+ *
+ * Hooks the `shfs_statfs` function in Unraid's `shfs` binary to capture
+ * filesystem stats per share. This probe uses a uprobe/uretprobe pair.
+ *
+ * Parameters in the original function:
+ *   path    - the share path or identifier
+ *   stbuf   - pointer to a buffer storing filesystem statistics
+ *
+ * How this probe maps the parameters:
+ *   @arg0 (bpftrace)      → path (captured as string for logging)
+ *   @arg1 (bpftrace)      → stbuf (struct statfs64 captured per thread)
+ *
+ * Output fields captured from stbuf:
+ *   type     - filesystem type (hex value normally mapped to EXT2/3/4, BTRFS, ZFS, etc. but shfs always returns 0x1000)
+ *   bsize    - block size in bytes
+ *   blocks   - total number of blocks
+ *   bfree    - free blocks
+ *   bavail   - available blocks for non-root users
+ *   files    - total number of inodes
+ *   ffree    - free inodes
+ *   namelen  - maximum filename length (often unused and returns 0)
+ *   frsize   - fragment size
+ *   flags    - human-readable mount flags decoded from stbuf->f_flags:
+ *               RDONLY, NOSUID, NODEV, NOEXEC, SYNCHRONOUS,
+ *               MANDLOCK, WRITE, APPEND
+ *
+ * Return values:
+ *   The function itself returns 0 on success, or negative errno on failure.
+ *
+ * Example output from this probe:
+ *   shfs_statfs: path=/appdata type=0x1000 bsize=4096 blocks=244190390
+ *                bfree=96052652 bavail=95240574 files=0 ffree=0
+ *                namelen=0 frsize=4096 flags=RDONLY WRITE NOSUID
+ */
+
+
+uprobe:/usr/libexec/unraid/shfs:0x10864
+{
+    @stbuf[tid] = (struct statfs*)arg1;
+    @path[tid] = str(arg0);
+}
+
+uretprobe:/usr/libexec/unraid/shfs:0x10864
+{
+    $st = @stbuf[tid];
+    $path = @path[tid];
+
+    printf("shfs_statfs: path=%s type=0x%lx bsize=%lu blocks=%lu bfree=%lu bavail=%lu files=%lu ffree=%lu namelen=%lu frsize=%lu flags=",
+           $path,
+           $st->f_type,
+           $st->f_bsize,
+           $st->f_blocks,
+           $st->f_bfree,
+           $st->f_bavail,
+           $st->f_files,
+           $st->f_ffree,
+           $st->f_namelen,
+           $st->f_frsize);
+
+    if ($st->f_flags & 0x1)  { printf("RDONLY "); }
+    if ($st->f_flags & 0x2)  { printf("NOSUID "); }
+    if ($st->f_flags & 0x4)  { printf("NODEV "); }
+    if ($st->f_flags & 0x8)  { printf("NOEXEC "); }
+    if ($st->f_flags & 0x10) { printf("SYNCHRONOUS "); }
+    if ($st->f_flags & 0x20) { printf("MANDLOCK "); }
+    if ($st->f_flags & 0x40) { printf("WRITE "); }
+    if ($st->f_flags & 0x80) { printf("APPEND "); }
+
+    printf("\n");
+
+    delete(@stbuf[tid]);
+    delete(@path[tid]);
+}
